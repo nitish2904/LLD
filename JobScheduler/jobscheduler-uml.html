@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Job Scheduler UML</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<style>
+body{font-family:sans-serif;background:#1a1a2e;color:#eee;padding:20px;text-align:center}
+h1{color:#667eea;margin-bottom:4px}
+.sub{color:#888;margin-bottom:20px}
+.diagram{background:#fff;border-radius:12px;padding:20px;display:inline-block;text-align:left;max-width:100%;overflow:auto}
+</style></head><body>
+<h1>Job Scheduler — UML Class Diagram</h1>
+<p class="sub">Layered Architecture · Strategy Pattern · Factory Pattern</p>
+<div class="diagram"><pre class="mermaid">
+classDiagram
+    direction TB
+
+    class Machine{
+        -String machineId
+        -Set~String~ capabilities
+        -int unfinishedJobs
+        -int finishedJobs
+        +hasCapabilities(required) bool
+        +incrementUnfinished()
+        +decrementUnfinished()
+        +incrementFinished()
+        +getMachineId() String
+        +getUnfinishedJobs() int
+        +getFinishedJobs() int
+    }
+
+    class Job{
+        -String jobId
+        -String[] capabilitiesRequired
+        -String assignedMachineId
+        -boolean completed
+        +getJobId() String
+        +getAssignedMachineId() String
+        +setAssignedMachineId(id)
+        +isCompleted() bool
+        +setCompleted(completed)
+    }
+
+    Job --> Machine : assigned to
+
+    class MachineSelectionStrategy{
+        &lt;&lt;interface&gt;&gt;
+        +select(candidates) Machine
+    }
+    class LeastUnfinishedStrategy{
+        +select(candidates) Machine
+    }
+    class MostFinishedStrategy{
+        +select(candidates) Machine
+    }
+    class StrategyFactory{
+        -Map strategyMap
+        +registerStrategy(criteria, strategy)
+        +getStrategy(criteria) MachineSelectionStrategy
+    }
+
+    MachineSelectionStrategy <|.. LeastUnfinishedStrategy : implements
+    MachineSelectionStrategy <|.. MostFinishedStrategy : implements
+    StrategyFactory --> MachineSelectionStrategy : creates/stores
+    StrategyFactory --> LeastUnfinishedStrategy : criteria=0
+    StrategyFactory --> MostFinishedStrategy : criteria=1
+
+    class MachineRepository{
+        -Map machines
+        +addMachine(machine)
+        +getMachine(id) Machine
+        +findCapableMachines(required) List
+    }
+    class JobRepository{
+        -Map jobs
+        +addJob(job)
+        +getJob(id) Job
+    }
+
+    MachineRepository --> Machine : stores
+    JobRepository --> Job : stores
+
+    class JobSchedulerService{
+        -MachineRepository machineRepo
+        -JobRepository jobRepo
+        -StrategyFactory strategyFactory
+        +addMachine(id, capabilities)
+        +assignMachineToJob(jobId, caps, criteria) String
+        +jobCompleted(jobId)
+        +getStrategyFactory() StrategyFactory
+    }
+
+    JobSchedulerService --> MachineRepository : finds capable machines
+    JobSchedulerService --> JobRepository : stores assigned jobs
+    JobSchedulerService --> StrategyFactory : gets strategy by criteria
+
+    class JobSchedulerMain{
+        +main(args)$
+    }
+
+    JobSchedulerMain --> JobSchedulerService : uses
+</pre></div>
+<script>mermaid.initialize({startOnLoad:true,theme:'default'});</script>
+</body></html>

@@ -1,0 +1,141 @@
+@startuml Job Scheduler - Layered LLD
+
+title Job Scheduler — Layered LLD Class Diagram\nStrategy Pattern · Factory Pattern
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontSize 11
+
+' ============================================================
+'  MODEL LAYER
+' ============================================================
+package "model" #FFEFD5 {
+    class Machine {
+        - machineId : String
+        - capabilities : Set<String>
+        - unfinishedJobs : int
+        - finishedJobs : int
+        + hasCapabilities(required : String[]) : boolean
+        + incrementUnfinished()
+        + decrementUnfinished()
+        + incrementFinished()
+        + getMachineId() : String
+        + getCapabilities() : Set<String>
+        + getUnfinishedJobs() : int
+        + getFinishedJobs() : int
+    }
+
+    class Job {
+        - jobId : String
+        - capabilitiesRequired : String[]
+        - assignedMachineId : String
+        - completed : boolean
+        + getJobId() : String
+        + getCapabilitiesRequired() : String[]
+        + getAssignedMachineId() : String
+        + setAssignedMachineId(id : String)
+        + isCompleted() : boolean
+        + setCompleted(completed : boolean)
+    }
+
+    Job --> Machine : "assigned to"
+}
+
+' ============================================================
+'  STRATEGY LAYER (Strategy Pattern)
+' ============================================================
+package "strategy" #D6EAF8 {
+    interface MachineSelectionStrategy <<interface>> {
+        + select(candidates : List<Machine>) : Machine
+    }
+
+    class LeastUnfinishedStrategy {
+        + select(candidates : List<Machine>) : Machine
+    }
+
+    class MostFinishedStrategy {
+        + select(candidates : List<Machine>) : Machine
+    }
+
+    class StrategyFactory <<factory>> {
+        - strategyMap : Map<Integer, MachineSelectionStrategy>
+        + registerStrategy(criteria : int, strategy : MachineSelectionStrategy)
+        + getStrategy(criteria : int) : MachineSelectionStrategy
+    }
+
+    MachineSelectionStrategy <|.. LeastUnfinishedStrategy : implements
+    MachineSelectionStrategy <|.. MostFinishedStrategy : implements
+
+    StrategyFactory --> MachineSelectionStrategy : creates/stores
+    StrategyFactory --> LeastUnfinishedStrategy : "criteria=0"
+    StrategyFactory --> MostFinishedStrategy : "criteria=1"
+}
+
+note right of MachineSelectionStrategy
+  <b>Strategy Pattern</b>
+  Pluggable algorithm for
+  machine selection.
+  criteria=0 → Least Unfinished
+  criteria=1 → Most Finished
+  Extensible via registerStrategy()
+end note
+
+note bottom of StrategyFactory
+  <b>Factory Pattern</b>
+  Maps criteria integer → strategy.
+  New algorithms registered at runtime.
+end note
+
+' ============================================================
+'  REPOSITORY LAYER
+' ============================================================
+package "repository" #FDEBD0 {
+    class MachineRepository {
+        - machines : Map<String, Machine>
+        + addMachine(machine : Machine)
+        + getMachine(machineId : String) : Machine
+        + findCapableMachines(required : String[]) : List<Machine>
+    }
+
+    class JobRepository {
+        - jobs : Map<String, Job>
+        + addJob(job : Job)
+        + getJob(jobId : String) : Job
+    }
+
+    MachineRepository --> Machine : stores
+    JobRepository --> Job : stores
+}
+
+' ============================================================
+'  SERVICE LAYER
+' ============================================================
+package "service" #E8DAEF {
+    class JobSchedulerService {
+        - machineRepository : MachineRepository
+        - jobRepository : JobRepository
+        - strategyFactory : StrategyFactory
+        + addMachine(machineId : String, capabilities : String[])
+        + assignMachineToJob(jobId : String, capabilitiesRequired : String[], criteria : int) : String
+        + jobCompleted(jobId : String)
+        + getStrategyFactory() : StrategyFactory
+    }
+
+    JobSchedulerService --> MachineRepository : "finds capable machines"
+    JobSchedulerService --> JobRepository : "stores assigned jobs"
+    JobSchedulerService --> StrategyFactory : "gets strategy by criteria"
+}
+
+' ============================================================
+'  MAIN (Entry Point)
+' ============================================================
+package "main" #FADBD8 {
+    class JobSchedulerMain {
+        + {static} main(args : String[])
+    }
+
+    JobSchedulerMain --> JobSchedulerService : "uses"
+}
+
+@enduml
